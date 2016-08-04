@@ -23,7 +23,7 @@ cp liferay-portal-6.2-ee-sp14.zip jboss-liferay/liferay-package/
 cp patching-tool-22.zip jboss-liferay/liferay-patching-tool
 ```
 
-The run:
+Then run:
 
 ```
 cd jboss-liferay/
@@ -31,4 +31,12 @@ cd jboss-liferay/
 docker build --build-arg LFR_DEPS_FOLDER=liferay-portal-dependencies-6.2-ee-sp14 -t andrefabbro/liferay-jboss:latest .
 ```
 
-> Notice that you should send the argument *LFR_DEPS_FOLDER* that should be the same as the folder inside the zip that contains the liferay dependencies. 
+> Notice that you should send the argument *LFR_DEPS_FOLDER* that should be the name of the folder inside the zip that contains the liferay dependencies (this could change for each package). 
+
+## Run the Machine
+
+In order to create a new instance, you should run:
+
+```
+docker run -d -p 9990:9990 -p 8080:8080 --name liferay andrefabbro/liferay-jboss:latest
+```
