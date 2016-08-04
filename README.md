@@ -40,3 +40,11 @@ In order to create a new instance, you should run:
 ```
 docker run -d -p 9990:9990 -p 8080:8080 --name liferay andrefabbro/liferay-jboss:latest
 ```
+
+Then, see the log:
+
+```
+docker logs --tail=100 -f liferay
+```
+
+And open you browser to the new Liferay EE instance: ```http://localhost:8080/```.
