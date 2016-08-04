@@ -14,12 +14,16 @@ docker build -t andrefabbro/jboss-base:latest .
 Copy the Liferay EE package, dependencies, license and patching tool inside the folders inside jboss-liferay:
 
 ```
+mkdir -p jboss-liferay/liferay-dependencies/
 cp liferay-portal-dependencies-6.2-ee-sp14.zip jboss-liferay/liferay-dependencies/
 
+mkdir -p jboss-liferay/liferay-license/
 cp license.xml jboss-liferay/liferay-license/
 
+mkdir -p jboss-liferay/liferay-package/
 cp liferay-portal-6.2-ee-sp14.zip jboss-liferay/liferay-package/
 
+mkdir -p jboss-liferay/liferay-patching-tool
 cp patching-tool-22.zip jboss-liferay/liferay-patching-tool
 ```
 
