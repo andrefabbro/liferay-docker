@@ -1,6 +1,7 @@
 project.txt
 jboss-base/jboss-eap-6.4.0.zip
-jboss-liferay/liferay-dependencies/*
-jboss-liferay/liferay-license/*
-jboss-liferay/liferay-package/*
-jboss-liferay/liferay-patching-tool/*
+jboss-liferay/liferay-dependencies/*.zip
+jboss-liferay/liferay-license/*.xml
+jboss-liferay/liferay-package/*.war
+jboss-liferay/liferay-patches/*.zip
+jboss-liferay/liferay-patching-tool/*.zip
