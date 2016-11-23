@@ -24,7 +24,10 @@ mkdir -p jboss-liferay/liferay-package/
 cp liferay-portal-6.2-ee-sp14.zip jboss-liferay/liferay-package/
 
 mkdir -p jboss-liferay/liferay-patching-tool
-cp patching-tool-22.zip jboss-liferay/liferay-patching-tool
+cp patching-tool-1.0.23.zip jboss-liferay/liferay-patching-tool
+
+mkdir -p jboss-liferay/liferay-patches
+cp liferay-fix-pack-portal-125-6210.zip jboss-liferay/liferay-patches
 ```
 
 Then run:
