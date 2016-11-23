@@ -1,6 +1,6 @@
 #
 # e.g. 
-# docker build --build-arg LFR_DEPS_FOLDER=liferay-portal-dependencies-6.2-ee-sp14
+# docker build --build-arg LFR_DEPS_FOLDER=liferay-portal-dependencies-6.2-ee-sp16 -t andrefabbro/liferay-jboss:latest .
 #
 FROM andrefabbro/jboss-base
 MAINTAINER Andre Fabbro <andre.fabbro@liferay.com>
@@ -91,6 +91,19 @@ RUN sed -i '/# SECMGR="true"/c SECMGR="true"' $INSTALLDIR/jboss-eap-6.4/bin/stan
 RUN echo $'\n\
 # Custom configuration for Liferay \n\
 JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true -Djava.security.policy=/opt/liferay/jboss-eap-6.4/bin/server.policy -Djboss.home.dir=/opt/liferay/jboss-eap-6.4 -Duser.timezone=GMT -Xmx1536m -XX:MaxPermSize=512m"' >> $INSTALLDIR/jboss-eap-6.4/bin/standalone.conf
+
+# Create a default portal-ext.properties
+RUN touch $INSTALLDIR/portal-ext.properties
+RUN echo $'admin.email.from.address=test@liferay.com\n\
+admin.email.from.name=Test Test\n\
+liferay.home=/opt/liferay\n\
+setup.wizard.enabled=false' >> $INSTALLDIR/portal-ext.properties
+
+# Install the lastest patch
+COPY liferay-patches/*.zip $INSTALLDIR/patching-tool/patches/
+RUN cd $INSTALLDIR/patching-tool/ \
+    && sh patching-tool.sh auto-discovery \
+    && sh patching-tool.sh install
 
 # Ensure signals are forwarded to the JVM process correctly for graceful shutdown
 ENV LAUNCH_JBOSS_IN_BACKGROUND true
