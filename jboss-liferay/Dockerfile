@@ -1,61 +1,110 @@
+# 
+# Liferay DXP + JBoss EAP 7.0
 #
-# e.g. 
-# docker build --build-arg LFR_DEPS_FOLDER=liferay-portal-dependencies-6.2-ee-sp16 -t andrefabbro/liferay-jboss:latest .
+# Build the image:
+# docker build \
+# --build-arg LIFERAY_PACKAGE_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/liferay-dxp-digital-enterprise-7.0-sp6-20171010144253003.war" \
+# --build-arg LIFERAY_DEPENDENCIES_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/liferay-dxp-digital-enterprise-dependencies-7.0-sp6-20171010144253003.zip" \
+# --build-arg LIFERAY_LICENSE_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/activation-key-development.xml" \
+# --build-arg LIFERAY_PATCHING_TOOL_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/patching-tool-2.0.7.zip" \
+# --build-arg LIFERAY_OSGI_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/liferay-dxp-digital-enterprise-osgi-7.0-sp6-20171010144253003.zip" \
+# --build-arg LIFERAY_TOOLS_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/liferay-dxp-digital-enterprise-tools-7.0-sp6-20171010144253003.zip" \
+# --build-arg LIFERAY_WORK_URL="http://<<YOUR_PACKAGE_REPOSITORY>>/liferay-dxp-digital-enterprise-work-7.0-sp6-20171010144253003.zip" \
+# --build-arg LIFERAY_FIX_PACK="http://<<YOUR_PACKAGE_REPOSITORY>>/liferay-fix-pack-de-39-7010.zip" \
+# -t andrefabbro/dxp-jboss7 . 
 #
-FROM andrefabbro/jboss-base
+# Run the image
+# docker run --name=dxp andrefabbro/dxp-jboss7
+#
+FROM andrefabbro/jboss-7-base
 MAINTAINER Andre Fabbro <andre.fabbro@liferay.com>
 
-ENV INSTALLDIR /opt/liferay
+ARG LIFERAY_PACKAGE_URL
+ARG	LIFERAY_DEPENDENCIES_URL
+ARG	LIFERAY_LICENSE_URL
+ARG	LIFERAY_PATCHING_TOOL_URL
+ARG	LIFERAY_OSGI_URL
+ARG	LIFERAY_TOOLS_URL
+ARG LIFERAY_WORK_URL
+ARG	LIFERAY_FIX_PACK
 
-# Name of the Folder that is extracted from the dependencies ZIP
-ARG LFR_DEPS_FOLDER
+ENV JAVA_HOME="/usr/java/default" \
+	JAVA_VENDOR="oracle" \
+	JAVA_VERSION="jdk1.8.0_144"
+
+WORKDIR /tmp
 
 USER root
 
-RUN yum -y install net-tools
-
-RUN mkdir -p $INSTALLDIR \
-    && chmod -R 755 $INSTALLDIR
-
-WORKDIR $INSTALLDIR
-
-COPY liferay-package/*.war $INSTALLDIR
+RUN touch /opt/.liferay-home
 
 # Get the Liferay WAR and place in JBoss deployment folder
-RUN cd $INSTALLDIR \
-    && ln -s /opt/jboss/jboss-eap-6.4 jboss-eap-6.4 \
-    && unzip -q *.war -d ROOT.war \
-    && chmod -R 775 ROOT.war/ \
-    && mv ROOT.war jboss-eap-6.4/standalone/deployments/ \
-    && touch jboss-eap-6.4/standalone/deployments/ROOT.war.dodeploy \
+RUN wget $LIFERAY_PACKAGE_URL \
+	&& unzip -q /tmp/*.war -d /opt/eap/standalone/deployments/ROOT.war \
+	&& touch /opt/eap/standalone/deployments/ROOT.war.dodeploy \
     && rm *.war
 
-COPY liferay-dependencies/*.zip $INSTALLDIR
-
 # Get the Liferay dependencies and put into JBoss modules folder
-RUN unzip -q *.zip \
-    && mkdir -p jboss-eap-6.4/modules/com/liferay/portal/main \
-    && mv $LFR_DEPS_FOLDER/*.jar jboss-eap-6.4/modules/com/liferay/portal/main \
-    && touch jboss-eap-6.4/modules/com/liferay/portal/main/module.xml \
-    && rm *.zip && rm -rf $LFR_DEPS_FOLDER
+RUN wget $LIFERAY_DEPENDENCIES_URL \
+	&& unzip -q *.zip \
+    && mkdir -p /opt/eap/modules/com/liferay/portal/main \
+    && mv */*.jar /opt/eap/modules/com/liferay/portal/main/ \
+    && touch /opt/eap/modules/com/liferay/portal/main/module.xml \
+    && rm -rf *
 
 # Get the Liferay license
-COPY liferay-license/*.xml $INSTALLDIR
-
-RUN mkdir deploy && cp *.xml deploy/ && rm *.xml
-
-COPY liferay-patching-tool/*.zip $INSTALLDIR
+RUN wget $LIFERAY_LICENSE_URL \
+	&& mkdir -p /opt/deploy \
+	&& mv *.xml /opt/deploy/
 
 # Install de patching tool
-RUN unzip -q *.zip && rm *.zip
+RUN wget $LIFERAY_PATCHING_TOOL_URL \
+	&& unzip -q *.zip \
+	&& mv patching-tool /opt/ \
+	&& rm *.zip
+	
+# Install the OSGi folder
+RUN wget $LIFERAY_OSGI_URL \
+	&& unzip -q *.zip \
+	&& mv */osgi /opt/ \
+	&& rm -rf *
+
+# Install Tools
+RUN wget $LIFERAY_TOOLS_URL \
+	&& unzip -q *.zip \
+	&& rm -rf *.zip \
+	&& mv liferay-portal-tools-* /opt/tools
+
+# Install work folder
+RUN wget $LIFERAY_WORK_URL \
+	&& mkdir -p /opt/work \
+	&& unzip -q *.zip \
+	&& rm -rf *.zip \
+	&& mv * /opt/work/
+	
+# Get the fix pack
+RUN wget $LIFERAY_FIX_PACK \
+	&& mv *.zip /opt/patching-tool/patches/
+	
+# Create datafolder
+RUN mkdir -p /opt/data
+	
+# Create datafolder
+RUN mkdir -p /opt/logs
+
+# Copy the sunjce provider to the modules
+RUN cp $JAVA_HOME/jre/lib/ext/sunjce_provider.jar /opt/eap/modules/com/liferay/portal/main/
 
 # Add the modules descriptor for Liferay Dependencies
 RUN echo $'<?xml version="1.0"?> \n\
-<module xmlns="urn:jboss:module:1.1" name="com.liferay.portal"> \n\
+<module xmlns="urn:jboss:module:1.0" name="com.liferay.portal"> \n\
     <resources> \n\
+        <resource-root path="com.liferay.registry.api.jar" /> \n\
         <resource-root path="hsql.jar" /> \n\
-        <resource-root path="portal-service.jar" /> \n\
-        <resource-root path="portlet.jar" /> \n\
+        <resource-root path="mariadb.jar" /> \n\
+		<resource-root path="portal-kernel.jar" /> \n\
+		<resource-root path="portlet.jar" /> \n\
+		<resource-root path="sunjce_provider.jar" /> \n\
     </resources> \n\
     <dependencies> \n\
         <module name="javax.api" /> \n\
@@ -64,44 +113,45 @@ RUN echo $'<?xml version="1.0"?> \n\
         <module name="javax.servlet.jsp.api" /> \n\
         <module name="javax.transaction.api" /> \n\
     </dependencies> \n\
-</module>' >> $INSTALLDIR/jboss-eap-6.4/modules/com/liferay/portal/main/module.xml
+</module>' >> /opt/eap/modules/com/liferay/portal/main/module.xml
 
 #
 # Instrument the standalone.xml with the specific configurations for the portal
 #
-RUN sed -i '/<\/extensions>/a\\n    <system-properties>\n\t<property name="org.apache.catalina.connector.URI_ENCODING" value="UTF-8"\/>\n\t<property name="org.apache.catalina.connector.USE_BODY_ENCODING_FOR_QUERY_STRING" value="true"\/>\n    <\/system-properties>\n' $INSTALLDIR/jboss-eap-6.4/standalone/configuration/standalone.xml
+RUN sed -i '/<\/extensions>/a\\n    <system-properties>\n\t<property name="org.apache.catalina.connector.URI_ENCODING" value="UTF-8"\/>\n\t<property name="org.apache.catalina.connector.USE_BODY_ENCODING_FOR_QUERY_STRING" value="true"\/>\n    <\/system-properties>\n' /opt/eap/standalone/configuration/standalone.xml \
+	&& sed -i '/scan-interval="5000"/c \\t    <deployment-scanner path="deployments" relative-to="jboss.server.base.dir" scan-interval="5000" deployment-timeout="360" runtime-failure-causes-rollback="${jboss.deployment.scanner.rollback.on.failure:false}" />' /opt/eap/standalone/configuration/standalone.xml \
+	&& sed -i '/jsp-config/c \\t    <jsp-config development="true" />' /opt/eap/standalone/configuration/standalone.xml \
+	&& sed -i '/handler="welcome-content"/d' /opt/eap/standalone/configuration/standalone.xml \
+	&& sed -i '/<\/security-domains>/i\\n\t\t<security-domain name="PortalRealm">\n\t\t    <authentication>\n\t\t\t<login-module code="com.liferay.portal.security.jaas.PortalLoginModule" flag="required"/>\n\t\t    </authentication>\n\t\t</security-domain>\n' /opt/eap/standalone/configuration/standalone.xml
 
-RUN sed -i '/scan-interval="5000"/c \\t    <deployment-scanner path="deployments" relative-to="jboss.server.base.dir" scan-interval="5000" deployment-timeout="240"/>' $INSTALLDIR/jboss-eap-6.4/standalone/configuration/standalone.xml
-
-RUN sed -i '/<\/security-domains>/i\\n\t\t<security-domain name="PortalRealm">\n\t\t    <authentication>\n\t\t\t<login-module code="com.liferay.portal.security.jaas.PortalLoginModule" flag="required"/>\n\t\t    </authentication>\n\t\t</security-domain>\n' $INSTALLDIR/jboss-eap-6.4/standalone/configuration/standalone.xml
-
-RUN sed -i '/urn\:jboss\:domain\:web\:2\.2/a \\n\t    <configuration>\n\t\t<jsp-configuration development="true"/>\n\t    </configuration>\n' $INSTALLDIR/jboss-eap-6.4/standalone/configuration/standalone.xml
-
-RUN sed -i 's/enable-welcome-root="true"/enable-welcome-root="false"/' $INSTALLDIR/jboss-eap-6.4/standalone/configuration/standalone.xml
+#
+# Add com/sun/crypto and other dependencies in sun/jdk/ module
+#
+RUN sed -i '/<\/paths>/i\\n\t\t<path name="com/sun/crypto" />\n\t\t<path name="com/sun/org/apache/xml/internal/resolver" />\n\t\t<path name="com/sun/org/apache/xml/internal/resolver/tools" />\n' /opt/eap/modules/system/layers/base/sun/jdk/main/module.xml
 
 # Create the default JBoss security policy
 RUN echo $'grant { \n\
     permission java.security.AllPermission; \n\
-};' > $INSTALLDIR/jboss-eap-6.4/bin/server.policy
+};' > /opt/eap/bin/server.policy
 
 # Activate the JBoss Security Manager
-RUN sed -i '/# SECMGR="true"/c SECMGR="true"' $INSTALLDIR/jboss-eap-6.4/bin/standalone.conf
+# RUN sed -i '/# SECMGR="true"/c SECMGR="true"' /opt/eap/bin/standalone.conf
 
-# Insert custom JVM Options, 1.5GB for heap size and 512MB for perm
-RUN echo $'\n\
-# Custom configuration for Liferay \n\
-JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true -Djava.security.policy=/opt/liferay/jboss-eap-6.4/bin/server.policy -Djboss.home.dir=/opt/liferay/jboss-eap-6.4 -Duser.timezone=GMT -Xmx1536m -XX:MaxPermSize=512m"' >> $INSTALLDIR/jboss-eap-6.4/bin/standalone.conf
+# Insert custom JVM Options, 1.5GB for heap size and 768MB for Metaspace
+RUN sed -i '/JAVA_OPTS="-Xms1303m -Xmx1303m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Djava.net.preferIPv4Stack=true"/c \\n   JAVA_OPTS="-Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true -Djava.security.policy=\/opt\/eap\/bin\/server.policy -Djboss.home.dir=\/opt\/eap -Duser.timezone=GMT -Xmx1536m -Xms1536m -XX:MetaspaceSize=768m -XX:MaxMetaspaceSize=768m"' /opt/eap/bin/standalone.conf
 
 # Create a default portal-ext.properties
-RUN touch $INSTALLDIR/portal-ext.properties
+RUN touch /opt/portal-ext.properties
 RUN echo $'admin.email.from.address=test@liferay.com\n\
 admin.email.from.name=Test Test\n\
-liferay.home=/opt/liferay\n\
-setup.wizard.enabled=false' >> $INSTALLDIR/portal-ext.properties
+liferay.home=/opt\n\
+setup.wizard.enabled=false' >> /opt/portal-ext.properties
+
+# USER jboss
+WORKDIR /opt/eap
 
 # Install the lastest patch
-COPY liferay-patches/*.zip $INSTALLDIR/patching-tool/patches/
-RUN cd $INSTALLDIR/patching-tool/ \
+RUN cd /opt/patching-tool/ \
     && sh patching-tool.sh auto-discovery \
     && sh patching-tool.sh install
 
@@ -109,11 +159,9 @@ RUN cd $INSTALLDIR/patching-tool/ \
 ENV LAUNCH_JBOSS_IN_BACKGROUND true
 
 # Expose the ports we're interested in
-EXPOSE 8080 9990 8009
+EXPOSE 8080 9990 8009 9999
 
 # Set the default command to run on boot
 # This will boot JBoss in the standalone mode and bind to all interface
 # CMD ["bash"]
-CMD ["/opt/liferay/jboss-eap-6.4/bin/standalone.sh", "-b", "0.0.0.0", "-bmanagement", "0.0.0.0"]
-
-
+CMD ["/opt/eap/bin/standalone.sh", "-b", "0.0.0.0", "-bmanagement", "0.0.0.0"]
