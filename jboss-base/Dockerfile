@@ -34,9 +34,14 @@ WORKDIR $INSTALLDIR
 # Specify the user which should be used to execute all commands below
 # USER jboss
 
-RUN cd $INSTALLDIR && wget $JBOSS7_PACKAGE_URL
+# Get the JBoss Package and extract into the /opt directory
+RUN cd $INSTALLDIR && wget $JBOSS7_PACKAGE_URL \
+  && unzip -q jboss-eap-7.0.0.zip -d $INSTALLDIR \
+  && rm jboss-eap-7.0.0.zip \
+  && mv /opt/jboss-eap-7.0 /opt/eap
 
-RUN cd $INSTALLDIR && unzip -q jboss-eap-7.0.0.zip -d $INSTALLDIR && rm jboss-eap-7.0.0.zip && mv /opt/jboss-eap-7.0 /opt/eap
+# Create a Default JBoss Admin user
+RUN cd /opt/eap/bin && ./add-user.sh -e -u jbossadm -p jbosspwd
 
 # Ensure signals are forwarded to the JVM process correctly for graceful shutdown
 ENV LAUNCH_JBOSS_IN_BACKGROUND true
