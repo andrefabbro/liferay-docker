@@ -1,7 +1,7 @@
 # 
 # docker build -t andrefabbro/jboss-base:latest .
 #
-FROM nimmis/java-centos:oracle-7-jre
+FROM nimmis/java-centos:oracle-7-jdk
 MAINTAINER Andre Fabbro <andre.fabbro@liferay.com>
 
 ENV INSTALLDIR /opt/jboss
