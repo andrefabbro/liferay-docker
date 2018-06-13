@@ -1,4 +1,4 @@
-# Docker Liferay DXP + JBoss EAP 7.x
+# Docker Liferay DXP + JBoss EAP 7.0.x
 
 These are Dockerfiles for build images of Liferay DXP for JBoss EAP 7.0.
 
